@@ -1,0 +1,14 @@
+{
+  "name": "alarm-portal",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SMTP motion-alarm receiver and dashboard for AI Alarm Portal",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test:webhook": "node test-webhook.js"
+  },
+  "dependencies": {
+    "smtp-server": "^3.13.6"
+  }
+}

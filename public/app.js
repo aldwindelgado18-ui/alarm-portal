@@ -1,5 +1,6 @@
 const feed = document.querySelector("#feed");
-const count = document.querySelector("#alarm-count");
+const gridSizes = [3, 4, 5];
+const gridSizeButtons = Array.from(document.querySelectorAll(".grid-selector [data-grid-size]"));
 const newCount = document.querySelector("#new-count");
 const todayCount = document.querySelector("#today-count");
 const clock = document.querySelector("#clock");
@@ -27,6 +28,42 @@ const connectionDot = document.querySelector(".dot");
 const userForm = document.querySelector("#user-form");
 const userStatus = document.querySelector("#user-status");
 const usersList = document.querySelector("#users-list");
+const siteInfoTabButtons = Array.from(document.querySelectorAll(".site-info-tabs [data-site-tab]"));
+const siteActions = document.querySelector(".site-actions");
+const addSitePanel = document.querySelector("#add-site-panel");
+const addSiteForm = document.querySelector("#add-site-form");
+const addSiteStatus = document.querySelector("#add-site-status");
+const manageMapsTrigger = document.querySelector("#manage-maps-trigger");
+const mapsManager = document.querySelector("#maps-manager");
+const mapForm = document.querySelector("#map-form");
+const mapStatus = document.querySelector("#map-status");
+const mapsList = document.querySelector("#maps-list");
+const mapStorageKey = "alarmPortal.siteMaps";
+const siteStorageKey = "alarmPortal.sites";
+let currentGridSize = 3;
+let currentAlarms = [];
+let alarmGridAvailable = false;
+let currentSiteName = "Alarm Portal";
+
+function fitAlarmGrid() {
+  if (!feed || views.alarms?.classList.contains("hidden")) return;
+  const feedRect = feed.getBoundingClientRect();
+  if (!feedRect.width) return;
+
+  const main = feed.closest("main");
+  const bottomPadding = parseFloat(getComputedStyle(main).paddingBottom) || 0;
+  feed.style.height = `${Math.max(0, window.innerHeight - feedRect.top - bottomPadding - 2)}px`;
+
+  const feedStyle = getComputedStyle(feed);
+  const horizontalPadding = (parseFloat(feedStyle.paddingLeft) || 0) + (parseFloat(feedStyle.paddingRight) || 0);
+  const verticalPadding = (parseFloat(feedStyle.paddingTop) || 0) + (parseFloat(feedStyle.paddingBottom) || 0);
+  const columnGap = parseFloat(feedStyle.columnGap) || 0;
+  const rowGap = parseFloat(feedStyle.rowGap) || 0;
+  const tileWidth = Math.max(0, Math.floor((feed.clientWidth - horizontalPadding - columnGap * (currentGridSize - 1)) / currentGridSize));
+  const tileHeight = Math.max(0, Math.floor((feed.clientHeight - verticalPadding - rowGap * (currentGridSize - 1)) / currentGridSize));
+  feed.style.setProperty("--alarm-tile-width", `${tileWidth}px`);
+  feed.style.setProperty("--alarm-tile-height", `${tileHeight}px`);
+}
 
 const ROLE_PERMISSIONS = {
   Superadmin: ["alarms", "history", "sources", "analytics", "sitesetup", "users"],
@@ -157,6 +194,7 @@ function setActiveView(viewName) {
   Object.entries(views).forEach(([key, view]) => {
     if (view) view.classList.toggle("hidden", key !== normalized);
   });
+  if (normalized === "alarms") fitAlarmGrid();
 }
 function loadSiteSettings() {
   const defaults = {
@@ -168,6 +206,7 @@ function loadSiteSettings() {
   };
   const saved = JSON.parse(localStorage.getItem("alarmPortal.siteSettings") || "null");
   const values = { ...defaults, ...(saved || {}) };
+  currentSiteName = values.siteName || defaults.siteName;
   if (setupForm) {
     Array.from(setupForm.elements).forEach((field) => {
       if (field.name) field.value = values[field.name] ?? "";
@@ -180,7 +219,74 @@ function loadSiteSettings() {
       <p><strong>Portal ID:</strong> ${escapeHtml(values.portalId || "ai-alarm-portal")}</p>
       <p><strong>Contact:</strong> ${escapeHtml(values.contactEmail || "ops@example.com")}</p>`;
   }
+  renderAlarmGrid();
   return values;
+}
+function getSiteMaps() {
+  try {
+    const maps = JSON.parse(localStorage.getItem(mapStorageKey) || "[]");
+    return Array.isArray(maps) ? maps : [];
+  } catch {
+    return [];
+  }
+}
+function saveSiteMaps(maps) {
+  localStorage.setItem(mapStorageKey, JSON.stringify(maps));
+}
+function getSavedSites() {
+  try {
+    const sites = JSON.parse(localStorage.getItem(siteStorageKey) || "[]");
+    return Array.isArray(sites) ? sites : [];
+  } catch {
+    return [];
+  }
+}
+function setSiteInfoTab(tabName) {
+  const selectedTab = tabName === "add-site" ? "add-site" : "site";
+  siteInfoTabButtons.forEach((button) => {
+    const selected = button.dataset.siteTab === selectedTab;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-selected", String(selected));
+  });
+  siteActions?.classList.toggle("hidden", selectedTab !== "site");
+  addSitePanel?.classList.toggle("hidden", selectedTab !== "add-site");
+  if (selectedTab === "add-site") addSiteForm?.elements.namedItem("siteName")?.focus();
+}
+function renderSiteMaps() {
+  if (!mapsList) return;
+  const maps = getSiteMaps();
+  if (!maps.length) {
+    mapsList.innerHTML = `<div class="maps-empty"><span class="maps-empty-mark" aria-hidden="true">+</span><strong>No maps added</strong><span>Your embedded maps will appear here.</span></div>`;
+    return;
+  }
+  mapsList.innerHTML = maps.map((map) => `<article class="panel map-card">
+      <div class="panel-title"><div><h3>${escapeHtml(map.name)}</h3></div><button class="map-remove" type="button" data-map-id="${escapeHtml(map.id)}" aria-label="Remove ${escapeHtml(map.name)}">Remove</button></div>
+      <iframe src="${escapeHtml(map.embedUrl)}" title="${escapeHtml(map.name)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+    </article>`).join("");
+}
+function setMapsManagerOpen(open) {
+  if (!mapsManager) return;
+  mapsManager.classList.toggle("hidden", !open);
+  if (open) {
+    renderSiteMaps();
+    mapForm?.elements.namedItem("name")?.focus();
+  } else {
+    manageMapsTrigger?.focus();
+  }
+}
+function parseGoogleMapsEmbed(input) {
+  let candidate = input.trim();
+  if (candidate.startsWith("<")) {
+    candidate = new DOMParser().parseFromString(candidate, "text/html").querySelector("iframe")?.getAttribute("src") || "";
+  }
+  try {
+    const url = new URL(candidate);
+    const googleHost = url.hostname === "google.com" || url.hostname.endsWith(".google.com");
+    const embedPath = url.pathname.startsWith("/maps/embed") || url.pathname.includes("/maps/d/embed");
+    return url.protocol === "https:" && googleHost && embedPath ? url.href : null;
+  } catch {
+    return null;
+  }
 }
 function getAuthState() {
   return JSON.parse(localStorage.getItem("alarmPortal.auth") || "null") || { loggedIn: false, userName: "guest", role: "Operator" };
@@ -196,6 +302,31 @@ function showLoginPanel() {
 function hideLoginPanel() {
   loginPanel?.classList.add("hidden");
   loginPanel?.classList.remove("visible");
+}
+function renderAlarmGrid() {
+  if (!feed || !alarmGridAvailable) return;
+  const capacity = currentGridSize * currentGridSize;
+  const visibleAlarms = currentAlarms.slice(0, capacity);
+  const alarmTiles = visibleAlarms.map((alarm) => `<article class="alarm">
+      <span class="severity ${alarm.severity === "critical" ? "critical" : ""}"></span>
+      <div class="alarm-content"><h3>${escapeHtml(currentSiteName)}</h3><p>${escapeHtml(alarm.subject)} · ${escapeHtml(alarm.message)}</p></div>
+      <div class="alarm-footer"><div class="alarm-camera-location"><strong>${escapeHtml(alarm.camera || "Unknown camera")}</strong><span>${escapeHtml(alarm.location || "Unknown location")}</span></div><div class="alarm-time-actions"><time>${new Date(alarm.receivedAt).toLocaleString()}</time>${alarm.status === "new" ? `<br><button class="ack" data-id="${alarm.id}">Acknowledge</button>` : ""}</div></div>
+    </article>`).join("");
+  const standbyTiles = Array.from({ length: capacity - visibleAlarms.length }, () => `<div class="alarm-grid-empty" aria-label="Standby grid slot"><span class="standby-dot"></span><span>Standby</span></div>`).join("");
+  feed.innerHTML = `${alarmTiles}${standbyTiles}`;
+  fitAlarmGrid();
+}
+function setAlarmGridSize(size) {
+  currentGridSize = gridSizes.includes(size) ? size : 3;
+  gridSizes.forEach((gridSize) => {
+    feed?.classList.toggle(`grid-${gridSize}`, currentGridSize === gridSize);
+  });
+  gridSizeButtons.forEach((button) => {
+    const selected = Number(button.dataset.gridSize) === currentGridSize;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  renderAlarmGrid();
 }
 function updateAuthUI() {
   const auth = getAuthState();
@@ -222,10 +353,10 @@ function tryLogin(username, password) {
 }
 async function loadAlarms() {
   const auth = getAuthState();
-  if (!count || !newCount || !todayCount || !feed) return;
+  if (!newCount || !todayCount || !feed) return;
   if (!auth.loggedIn) {
+    alarmGridAvailable = false;
     setConnectionStatus("Disconnected");
-    count.textContent = `0 alarms`;
     newCount.textContent = "0";
     todayCount.textContent = "0";
     feed.innerHTML = `<div class="empty">Please login to view alarms.<br><small>Use the portal login in the header.</small></div>`;
@@ -237,27 +368,48 @@ async function loadAlarms() {
     if (!response.ok) throw new Error("Failed to fetch alarms");
     const { alarms } = await response.json();
     setConnectionStatus("Connected");
+    alarmGridAvailable = true;
     const today = new Date().toISOString().slice(0, 10);
-    count.textContent = `${alarms.length} alarm${alarms.length === 1 ? "" : "s"}`;
     newCount.textContent = alarms.filter((alarm) => alarm.status === "new").length;
     todayCount.textContent = alarms.filter((alarm) => alarm.receivedAt.startsWith(today)).length;
-    if (!alarms.length) {
-      feed.innerHTML = `<div class="empty">No motion alarms received yet.<br><small>Authenticated SMTP messages will appear here.</small></div>`;
-      return;
-    }
-    feed.innerHTML = alarms.map((alarm) => `<article class="alarm">
-      <span class="severity ${alarm.severity === "critical" ? "critical" : ""}"></span>
-      <div><h3>${escapeHtml(alarm.subject)}</h3><p><b>${escapeHtml(alarm.camera)}</b> · ${escapeHtml(alarm.location)} · ${escapeHtml(alarm.message)}</p></div>
-      <div><time>${new Date(alarm.receivedAt).toLocaleString()}</time>${alarm.status === "new" ? `<br><button class="ack" data-id="${alarm.id}">Acknowledge</button>` : ""}</div>
-    </article>`).join("");
+    currentAlarms = alarms;
+    renderAlarmGrid();
   } catch (error) {
+    alarmGridAvailable = false;
     setConnectionStatus("Disconnected");
-    count.textContent = `0 alarms`;
     newCount.textContent = "0";
     todayCount.textContent = "0";
     feed.innerHTML = `<div class="empty">Unable to load alarms.<br><small>Check that the portal backend is running and reachable.</small></div>`;
   }
 }
+gridSizeButtons.forEach((button) => {
+  button.addEventListener("click", () => setAlarmGridSize(Number(button.dataset.gridSize)));
+});
+siteInfoTabButtons.forEach((button) => {
+  button.addEventListener("click", () => setSiteInfoTab(button.dataset.siteTab));
+});
+addSiteForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const site = Object.fromEntries(new FormData(addSiteForm).entries());
+  site.siteName = site.siteName.toString().trim();
+  site.siteId = site.siteId.toString().trim();
+  if (!site.siteName || !site.siteId) return;
+  const sites = getSavedSites();
+  if (sites.some((existing) => existing.siteId.toLowerCase() === site.siteId.toLowerCase())) {
+    if (addSiteStatus) {
+      addSiteStatus.textContent = "A site with this ID already exists.";
+      addSiteStatus.className = "setup-status error";
+    }
+    return;
+  }
+  sites.push({ ...site, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+  localStorage.setItem(siteStorageKey, JSON.stringify(sites));
+  addSiteForm.reset();
+  if (addSiteStatus) {
+    addSiteStatus.textContent = `${site.siteName} added.`;
+    addSiteStatus.className = "setup-status success";
+  }
+});
 if (feed) {
   feed.addEventListener("click", async (event) => {
     if (!event.target.matches(".ack")) return;
@@ -326,8 +478,47 @@ mobileMenuToggle?.addEventListener("click", () => {
   const expanded = topnav?.classList.contains("open");
   mobileMenuToggle?.setAttribute("aria-expanded", expanded ? "true" : "false");
 });
+manageMapsTrigger?.addEventListener("click", () => setMapsManagerOpen(true));
+document.querySelector("#maps-back")?.addEventListener("click", () => setMapsManagerOpen(false));
+mapsManager?.addEventListener("click", (event) => {
+  if (event.target === mapsManager) setMapsManagerOpen(false);
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && mapsManager && !mapsManager.classList.contains("hidden")) {
+    setMapsManagerOpen(false);
+  }
+});
+mapForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const form = new FormData(mapForm);
+  const name = form.get("name")?.toString().trim() || "";
+  const embedUrl = parseGoogleMapsEmbed(form.get("embed")?.toString() || "");
+  if (!name || !embedUrl) {
+    if (mapStatus) {
+      mapStatus.textContent = "Enter a name and a valid HTTPS Google Maps embed URL or iframe.";
+      mapStatus.className = "setup-status error";
+    }
+    return;
+  }
+  const maps = getSiteMaps();
+  maps.push({ id: crypto.randomUUID(), name, embedUrl });
+  saveSiteMaps(maps);
+  mapForm.reset();
+  if (mapStatus) {
+    mapStatus.textContent = "Map added.";
+    mapStatus.className = "setup-status success";
+  }
+  renderSiteMaps();
+});
+mapsList?.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target.closest(".map-remove") : null;
+  if (!target) return;
+  const maps = getSiteMaps().filter((map) => map.id !== target.dataset.mapId);
+  saveSiteMaps(maps);
+  renderSiteMaps();
+});
 window.addEventListener("hashchange", () => setActiveView(getViewFromHash()));
-document.querySelector("#refresh")?.addEventListener("click", loadAlarms);
+window.addEventListener("resize", fitAlarmGrid);
 if (userForm) {
   userForm.addEventListener("submit", (event) => {
     event.preventDefault();

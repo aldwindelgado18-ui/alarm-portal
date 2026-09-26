@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Alarm Portal</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=22">
 </head>
 <body>
   <header class="topbar">
@@ -15,17 +15,17 @@
         <small>Operational dashboard</small>
       </div>
     </div>
+    <nav class="topnav">
+      <a href="#alarms" data-view="alarms" class="active" aria-current="page">Live Alarms</a>
+      <a href="#history" data-view="history">Alarm History</a>
+      <a href="#sources" data-view="sources">AI Sources</a>
+      <a href="#analytics" data-view="analytics">Analytics</a>
+      <a href="#sitesetup" data-view="sitesetup">Site Info</a>
+      <a href="#users" data-view="users">Users</a>
+    </nav>
     <div class="connection"><span class="dot"></span><span id="connection">Connected</span><time id="clock"></time><b id="user-name">superadmin</b><button id="auth-toggle" class="auth-toggle" type="button">Logout</button></div>
     <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-expanded="false" aria-label="Toggle navigation">☰</button>
   </header>
-  <nav class="topnav">
-    <a href="#alarms" data-view="alarms">Live Alarms</a>
-    <a href="#history" data-view="history">Alarm History</a>
-    <a href="#sources" data-view="sources">AI Sources</a>
-    <a href="#analytics" data-view="analytics">Analytics</a>
-    <a href="#sitesetup" data-view="sitesetup">Site Info</a>
-    <a href="#users" data-view="users">Users</a>
-  </nav>
   <div id="login-panel" class="login-panel hidden">
     <div class="login-card">
       <h2>Portal Login</h2>
@@ -37,67 +37,79 @@
       <p id="login-status" class="login-status"></p>
     </div>
   </div>
-  <main>
+  <main id="tab-content-container" class="tab-content-container">
     <section id="view-alarms" class="hidden">
-      <section class="heading"><div><p class="eyebrow">SECURITY OVERVIEW</p><h1>Live Alarms <span id="alarm-count">0 alarms</span></h1></div><button id="refresh">Refresh</button></section>
+      <section class="panel">
+        <div class="panel-title"><div><h2>Motion Alarm Receiver</h2><p>Incoming motion alerts from connected AI sources</p></div><div class="receiver-tools"><div class="grid-selector" role="group" aria-label="Alarm grid layout"><button type="button" class="active" data-grid-size="3" aria-pressed="true">3 × 3</button><button type="button" data-grid-size="4" aria-pressed="false">4 × 4</button><button type="button" data-grid-size="5" aria-pressed="false">5 × 5</button></div><span class="live"><i></i> LIVE</span></div></div>
+        <div id="feed" class="feed alarm-grid grid-3"><div class="empty">No motion alarms received yet.<br><small>Authenticated SMTP messages will appear here.</small></div></div>
+      </section>
+    </section>
+
+    <section id="view-history" class="hidden">
+      <section class="panel"><div class="panel-title"><div><h2>Recent activity</h2><p>Historical alerts and acknowledgements will appear here.</p></div></div><div class="setup-preview"><h3>History view ready</h3><p>Use this space to review prior incidents and operator actions.</p></div></section>
+    </section>
+
+    <section id="view-sources" class="hidden">
+      <section class="panel"><div class="panel-title"><div><h2>Connected integrations</h2><p>Manage the services that send alerts into this portal.</p></div></div><div class="setup-preview"><h3>AI Alarm Portal</h3><p>Status: Connected · Webhook: http://localhost:5000/api/alerts</p></div></section>
+    </section>
+
+    <section id="view-analytics" class="hidden">
       <section class="stats">
         <div><span>NEW ALARMS</span><strong id="new-count">0</strong><em>Awaiting review</em></div>
         <div><span>RECEIVED TODAY</span><strong id="today-count">0</strong><em>Via SMTP handshake</em></div>
         <div><span>CONNECTED SOURCES</span><strong>1</strong><em class="good">● AI Alarm Portal</em></div>
       </section>
-      <section class="panel">
-        <div class="panel-title"><div><h2>Motion Detection Feed</h2><p>Incoming alarms from your AI Alarm Portal</p></div><span class="live"><i></i> LIVE</span></div>
-        <div id="feed" class="feed"><div class="empty">No motion alarms received yet.<br><small>Authenticated SMTP messages will appear here.</small></div></div>
-      </section>
-    </section>
-
-    <section id="view-history" class="hidden">
-      <section class="heading"><div><p class="eyebrow">AUDIT TRAIL</p><h1>Alarm History</h1></div></section>
-      <section class="panel"><div class="panel-title"><div><h2>Recent activity</h2><p>Historical alerts and acknowledgements will appear here.</p></div></div><div class="setup-preview"><h3>History view ready</h3><p>Use this space to review prior incidents and operator actions.</p></div></section>
-    </section>
-
-    <section id="view-sources" class="hidden">
-      <section class="heading"><div><p class="eyebrow">SOURCE MANAGEMENT</p><h1>AI Sources</h1></div></section>
-      <section class="panel"><div class="panel-title"><div><h2>Connected integrations</h2><p>Manage the services that send alerts into this portal.</p></div></div><div class="setup-preview"><h3>AI Alarm Portal</h3><p>Status: Connected · Webhook: http://localhost:5000/api/alerts</p></div></section>
-    </section>
-
-    <section id="view-analytics" class="hidden">
-      <section class="heading"><div><p class="eyebrow">OPERATIONS</p><h1>Analytics</h1></div></section>
       <section class="panel"><div class="panel-title"><div><h2>Daily overview</h2><p>Monitor alert volume and response trends.</p></div></div><div class="setup-preview"><h3>Live metrics</h3><p>Totals will update as alarms are received and acknowledged.</p></div></section>
     </section>
 
     <section id="view-sitesetup" class="hidden">
-      <section class="heading"><div><p class="eyebrow">SITE INFORMATION</p></div></section>
       <div class="site-info-tabs">
-        <button class="active" type="button">Site</button>
-        <button type="button">Site Details</button>
+        <button class="active" type="button" data-site-tab="site" aria-selected="true">Site</button>
+        <button type="button" data-site-tab="add-site" aria-selected="false">Add Site</button>
+        <ul class="site-actions">
+          <li>Manage Devices and Alarms</li>
+          <li><button id="manage-maps-trigger" class="site-action-button" type="button">Manage Maps</button></li>
+          <li>Alarm Disarm Schedule</li>
+          <li>View Summary</li>
+          <li>Setup History</li>
+        </ul>
       </div>
-      <section class="site-info-grid">
-          <div class="panel site-actions-panel">
-            <div class="panel-title"><div><h2>SITE ACTIONS FOR</h2><p>Quick operations for the selected deployment.</p></div></div>
-            <ul class="site-actions">
-              <li>Edit Details</li>
-              <li>Manage Devices and Alarms</li>
-              <li>Manage Maps</li>
-              <li>Manage Scheduled Patrols</li>
-              <li>Manage Site Disarm Schedule</li>
-              <li>Alarm Disarm Schedule</li>
-              <li>Expected Alarm Schedule</li>
-              <li>Autohandle Schedules</li>
-              <li>View Summary</li>
-              <li>Setup History</li>
-            </ul>
+      <section id="add-site-panel" class="add-site-panel hidden" aria-labelledby="add-site-title">
+        <form id="add-site-form" class="panel add-site-form">
+          <div class="panel-title"><div><h2 id="add-site-title">Add Site</h2><p>Enter the site and primary contact details.</p></div></div>
+          <div class="add-site-fields">
+            <label>Site Name<input name="siteName" type="text" autocomplete="organization" required></label>
+            <label>Site ID<input name="siteId" type="text" required></label>
+            <label>Address<input name="address" type="text" autocomplete="street-address"></label>
+            <label>City<input name="city" type="text" autocomplete="address-level2"></label>
+            <label>State / Province<input name="region" type="text" autocomplete="address-level1"></label>
+            <label>Postal Code<input name="postalCode" type="text" autocomplete="postal-code"></label>
+            <label>Country<input name="country" type="text" autocomplete="country-name"></label>
+            <label>Contact Name<input name="contactName" type="text" autocomplete="name"></label>
+            <label>Contact Email<input name="contactEmail" type="email" autocomplete="email"></label>
+            <label>Contact Phone<input name="contactPhone" type="tel" autocomplete="tel"></label>
+            <label class="add-site-notes">Notes<textarea name="notes" rows="3"></textarea></label>
+            <div class="add-site-actions"><button type="submit">Add Site</button><p id="add-site-status" class="setup-status" aria-live="polite"></p></div>
           </div>
-          <div class="panel site-key-panel">
-            <div class="panel-title"><div><h2>KEY</h2><p>Icon meaning for the site list.</p></div></div>
-            <ul class="site-key">
-              <li><span class="site-key-dot monitoring"></span>Monitoring Station</li>
-              <li><span class="site-key-dot site"></span>Site</li>
-              <li><span class="site-key-dot disabled"></span>Disabled Site</li>
-              <li><span class="site-key-dot orphan"></span>Orphaned Site</li>
-              <li><span class="site-key-dot customer"></span>Customer</li>
-            </ul>
-          </div>
+        </form>
+      </section>
+      <section id="maps-manager" class="maps-manager hidden" role="dialog" aria-modal="true" aria-labelledby="maps-manager-title">
+        <header class="maps-manager-header">
+          <div><h2 id="maps-manager-title">Site Maps</h2><p>Add Google Maps embeds for this site.</p></div>
+          <button id="maps-back" class="secondary" type="button">Back to Site</button>
+        </header>
+        <div class="maps-manager-layout">
+          <form id="map-form" class="panel map-form">
+            <div class="panel-title"><div><h3>Add map</h3><p>Paste a Google Maps embed URL or iframe snippet.</p></div></div>
+            <div class="map-form-fields">
+              <label>Map name<input name="name" type="text" placeholder="Main entrance" required></label>
+              <label>Google Maps embed<textarea name="embed" rows="5" placeholder="Paste the Google Maps embed link or iframe code" required></textarea></label>
+              <button type="submit">Add Map</button>
+              <p id="map-status" class="setup-status" aria-live="polite"></p>
+            </div>
+          </form>
+          <div id="maps-list" class="maps-list" aria-live="polite"></div>
+        </div>
       </section>
     </section>
 
@@ -131,6 +143,6 @@
       </section>
     </section>
   </main>
-  <script src="/app.js"></script>
+  <script src="/app.js?v=9"></script>
 </body>
 </html>

@@ -52,10 +52,14 @@ h1 span{font-size:12px;font-weight:500;color:#8db9eb;background:#344d67;border-r
 .feed.alarm-grid{display:grid;grid-template-columns:repeat(3,var(--alarm-tile-width,minmax(0,1fr)));grid-auto-rows:var(--alarm-tile-height,minmax(120px,auto));justify-content:center;align-content:center;gap:10px;min-height:0;padding:16px;overflow:hidden}
 .feed.alarm-grid.grid-4{grid-template-columns:repeat(4,var(--alarm-tile-width,minmax(0,1fr)))}
 .feed.alarm-grid.grid-5{grid-template-columns:repeat(5,var(--alarm-tile-width,minmax(0,1fr)))}
-.feed.alarm-grid .alarm{grid-template-columns:8px minmax(0,1fr);grid-template-rows:1fr auto;align-content:start;gap:8px;min-width:0;min-height:0;padding:12px;background:#2a3338;border:1px solid #465058;border-radius:6px;overflow:hidden}
+.feed.alarm-grid .alarm{position:relative;grid-template-columns:8px minmax(0,1fr);grid-template-rows:1fr auto;align-content:start;gap:8px;min-width:0;min-height:0;padding:12px;background:#2a3338;border:1px solid #465058;border-radius:6px;overflow:hidden}
 .feed.alarm-grid .alarm:last-child{border:1px solid #465058}
+.alarm-dismiss{position:absolute;top:6px;right:6px;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:4px;background:transparent;color:#9da8b8;cursor:pointer}
+.alarm-dismiss:hover{background:#47383a;color:#ff8588}
+.alarm-dismiss:focus-visible{outline:2px solid #78b7ff;outline-offset:1px}
+.alarm-dismiss svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-linecap:round;stroke-linejoin:round;stroke-width:2}
 .feed.alarm-grid .alarm>.severity{align-self:start}
-.feed.alarm-grid .alarm-content{grid-column:2;align-self:start;min-width:0;overflow-wrap:anywhere}
+.feed.alarm-grid .alarm-content{grid-column:2;align-self:start;min-width:0;padding-right:24px;overflow-wrap:anywhere}
 .feed.alarm-grid .alarm-footer{grid-column:2;display:flex;align-items:flex-end;justify-content:space-between;gap:8px;min-width:0}
 .feed.alarm-grid .alarm-camera-location{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 6px;min-width:0;overflow-wrap:anywhere}
 .feed.alarm-grid .alarm-camera-location strong{font-size:11px;overflow-wrap:anywhere}

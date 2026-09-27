@@ -306,8 +306,9 @@ function hideLoginPanel() {
 function renderAlarmGrid() {
   if (!feed || !alarmGridAvailable) return;
   const capacity = currentGridSize * currentGridSize;
-  const visibleAlarms = currentAlarms.slice(0, capacity);
+  const visibleAlarms = currentAlarms.filter((alarm) => alarm.status !== "dismissed").slice(0, capacity);
   const alarmTiles = visibleAlarms.map((alarm) => `<article class="alarm">
+      <button class="alarm-dismiss" type="button" data-id="${escapeHtml(alarm.id)}" aria-label="Dismiss alarm" title="Dismiss alarm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
       <span class="severity ${alarm.severity === "critical" ? "critical" : ""}"></span>
       <div class="alarm-content"><h3>${escapeHtml(currentSiteName)}</h3><p>${escapeHtml(alarm.subject)} · ${escapeHtml(alarm.message)}</p></div>
       <div class="alarm-footer"><div class="alarm-camera-location"><strong>${escapeHtml(alarm.camera || "Unknown camera")}</strong><span>${escapeHtml(alarm.location || "Unknown location")}</span></div><div class="alarm-time-actions"><time>${new Date(alarm.receivedAt).toLocaleString()}</time>${alarm.status === "new" ? `<br><button class="ack" data-id="${alarm.id}">Acknowledge</button>` : ""}</div></div>
@@ -412,8 +413,14 @@ addSiteForm?.addEventListener("submit", (event) => {
 });
 if (feed) {
   feed.addEventListener("click", async (event) => {
-    if (!event.target.matches(".ack")) return;
-    await fetch(`/api/alarms/${event.target.dataset.id}`, { method: "PATCH" });
+    const button = event.target.closest("button.ack, button.alarm-dismiss");
+    if (!button) return;
+    const options = { method: "PATCH" };
+    if (button.matches(".alarm-dismiss")) {
+      options.headers = { "Content-Type": "application/json" };
+      options.body = JSON.stringify({ status: "dismissed" });
+    }
+    await fetch(`/api/alarms/${button.dataset.id}`, options);
     loadAlarms();
   });
 }

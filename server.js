@@ -158,7 +158,16 @@ function createServer() {
       const id = url.pathname.split("/").pop();
       const alarm = alarms.find((item) => item.id === id);
       if (!alarm) return json(response, 404, { error: "Alarm not found" });
-      alarm.status = "acknowledged";
+      let payload = {};
+      try {
+        payload = JSON.parse(await readBody(request) || "{}");
+      } catch {
+        return json(response, 400, { error: "Expected a JSON body" });
+      }
+      if (payload.status && !["acknowledged", "dismissed"].includes(payload.status)) {
+        return json(response, 400, { error: "Invalid alarm status" });
+      }
+      alarm.status = payload.status || "acknowledged";
       saveAlarms();
       return json(response, 200, alarm);
     }

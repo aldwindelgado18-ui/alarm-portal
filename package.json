@@ -6,6 +6,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "test": "node tests/site-tab-regression.test.js",
     "test:webhook": "node test-webhook.js"
   },
   "dependencies": {

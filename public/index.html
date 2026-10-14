@@ -4,26 +4,25 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Alarm Portal</title>
-  <link rel="stylesheet" href="/styles.css?v=22">
+  <link rel="stylesheet" href="/styles.css?v=23">
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
-      <img class="brand-logo" src="/logo/logo.png" alt="Alarm Portal logo">
-      <div>
-        <strong>Alarm Portal</strong>
-        <small>Operational dashboard</small>
-      </div>
+      <img class="brand-logo" src="/logo/logo.png" alt="Alarm Portal logo" title="Checking system connection">
     </div>
     <nav class="topnav">
       <a href="#alarms" data-view="alarms" class="active" aria-current="page">Live Alarms</a>
       <a href="#history" data-view="history">Alarm History</a>
-      <a href="#sources" data-view="sources">AI Sources</a>
-      <a href="#analytics" data-view="analytics">Analytics</a>
       <a href="#sitesetup" data-view="sitesetup">Site Info</a>
+      <button id="take-break-trigger" class="take-break-trigger" type="button" hidden>Take a Break</button>
+      <a href="#analytics" data-view="analytics">Analytics</a>
+      <a href="#logs" data-view="logs">User Logs</a>
+      <a href="#sources" data-view="sources">AI Sources</a>
       <a href="#users" data-view="users">Users</a>
     </nav>
-    <div class="connection"><span class="dot"></span><span id="connection">Connected</span><time id="clock"></time><b id="user-name">superadmin</b><button id="auth-toggle" class="auth-toggle" type="button">Logout</button></div>
+    <div class="receiver-tools"><div class="grid-selector" role="group" aria-label="Alarm grid layout"><button type="button" data-grid-size="2" aria-pressed="false">2 × 2</button><button type="button" class="active" data-grid-size="3" aria-pressed="true">3 × 3</button><button type="button" data-grid-size="4" aria-pressed="false">4 × 4</button><button type="button" data-grid-size="5" aria-pressed="false">5 × 5</button></div></div>
+    <div class="connection"><span id="live-indicator" class="live" title="Checking system connection"><i></i><span id="live-label"></span></span><time id="clock"></time><b id="user-name">superadmin</b><button id="auth-toggle" class="auth-toggle" type="button">Logout</button></div>
     <button id="mobile-menu-toggle" class="mobile-menu-toggle" type="button" aria-expanded="false" aria-label="Toggle navigation">☰</button>
   </header>
   <div id="login-panel" class="login-panel hidden">
@@ -37,15 +36,52 @@
       <p id="login-status" class="login-status"></p>
     </div>
   </div>
+  <div id="break-overlay" class="break-overlay" role="dialog" aria-modal="true" aria-labelledby="break-title" hidden>
+    <div class="break-message">
+      <span class="break-status-mark" aria-hidden="true"></span>
+      <h1 id="break-title">ON A BREAK</h1>
+      <p id="break-started-at"></p>
+      <button id="done-break-trigger" type="button">DONE BREAK</button>
+    </div>
+  </div>
+  <dialog id="break-confirm-dialog" class="alarm-confirm-dialog break-confirm-dialog" aria-labelledby="break-confirm-title" aria-describedby="break-confirm-message">
+    <div class="alarm-confirm-content">
+      <h2 id="break-confirm-title">Are you sure?</h2>
+      <p id="break-confirm-message">Incoming alarms will be held on screen until you finish your break.</p>
+      <p id="break-confirm-error" class="alarm-dismiss-error" role="alert"></p>
+      <div class="alarm-confirm-actions"><button id="break-confirm-cancel" class="secondary" type="button">Cancel</button><button id="break-confirm-start" class="break-confirm-primary" type="button">Yes, Take a Break</button></div>
+    </div>
+  </dialog>
   <main id="tab-content-container" class="tab-content-container">
     <section id="view-alarms" class="hidden">
       <section class="panel">
-        <div class="panel-title"><div><h2>Motion Alarm Receiver</h2><p>Incoming motion alerts from connected AI sources</p></div><div class="receiver-tools"><div class="grid-selector" role="group" aria-label="Alarm grid layout"><button type="button" class="active" data-grid-size="3" aria-pressed="true">3 × 3</button><button type="button" data-grid-size="4" aria-pressed="false">4 × 4</button><button type="button" data-grid-size="5" aria-pressed="false">5 × 5</button></div><span class="live"><i></i> LIVE</span></div></div>
-        <div id="feed" class="feed alarm-grid grid-3"><div class="empty">No motion alarms received yet.<br><small>Authenticated SMTP messages will appear here.</small></div></div>
+        <div id="feed" class="feed alarm-grid grid-3" aria-busy="true"></div>
       </section>
     </section>
 
     <section id="view-history" class="hidden">
+      <section class="panel history-panel">
+        <div class="history-tabs" role="tablist" aria-label="Alarm history views">
+          <button id="history-tab-global" type="button" role="tab" aria-selected="true" aria-controls="history-results" data-history-view="global">Global Alarms</button>
+          <button id="history-tab-processed" type="button" role="tab" aria-selected="false" aria-controls="history-results" data-history-view="processed">Processed Alarms</button>
+          <button id="history-tab-pending" type="button" role="tab" aria-selected="false" aria-controls="history-results" data-history-view="pending">Pending Alarms</button>
+        </div>
+        <div class="history-filters" aria-label="Filter alarms">
+          <label>Site<input id="history-site-filter" type="search" placeholder="Search site name"></label>
+          <label>Camera<input id="history-camera-filter" type="search" placeholder="Search camera"></label>
+          <label>From<input id="history-date-from" type="date"></label>
+          <label>To<input id="history-date-to" type="date"></label>
+        </div>
+        <div class="history-results" id="history-results" role="tabpanel" aria-labelledby="history-tab-global">
+          <p id="history-count" class="history-count" aria-live="polite"></p>
+          <div class="history-table-scroll">
+            <table class="history-table">
+              <thead><tr><th>Site / location</th><th>Camera</th><th>Operator</th><th>Received</th><th>Status</th><th>Alarm</th></tr></thead>
+              <tbody id="history-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
     </section>
 
     <section id="view-sources" class="hidden">
@@ -64,73 +100,118 @@
     <section id="view-sitesetup" class="hidden">
       <div class="site-info-tabs">
         <button class="active" type="button" data-site-tab="site" aria-selected="true">Site</button>
-        <button type="button" data-site-tab="add-site" aria-selected="false">Add Site</button>
-        <ul class="site-actions">
-          <li>Manage Devices and Alarms</li>
-          <li><button id="manage-maps-trigger" class="site-action-button" type="button">Manage Maps</button></li>
-          <li>Alarm Disarm Schedule</li>
-          <li>View Summary</li>
-          <li>Setup History</li>
-        </ul>
+        <button type="button" data-site-tab="integration" aria-selected="false">Integration</button>
+        <button id="setup-history-trigger" type="button" data-site-tab="setup-history" aria-selected="false">Setup History</button>
       </div>
-      <section id="add-site-panel" class="add-site-panel hidden" aria-labelledby="add-site-title">
-        <form id="add-site-form" class="panel add-site-form">
-          <div class="panel-title"><div><h2 id="add-site-title">Add Site</h2><p>Enter the site and primary contact details.</p></div></div>
-          <div class="add-site-fields">
-            <label>Site Name<input name="siteName" type="text" autocomplete="organization" required></label>
-            <label>Site ID<input name="siteId" type="text" required></label>
-            <label>Address<input name="address" type="text" autocomplete="street-address"></label>
-            <label>City<input name="city" type="text" autocomplete="address-level2"></label>
-            <label>State / Province<input name="region" type="text" autocomplete="address-level1"></label>
-            <label>Postal Code<input name="postalCode" type="text" autocomplete="postal-code"></label>
-            <label>Country<input name="country" type="text" autocomplete="country-name"></label>
-            <label>Contact Name<input name="contactName" type="text" autocomplete="name"></label>
-            <label>Contact Email<input name="contactEmail" type="email" autocomplete="email"></label>
-            <label>Contact Phone<input name="contactPhone" type="tel" autocomplete="tel"></label>
-            <label class="add-site-notes">Notes<textarea name="notes" rows="3"></textarea></label>
-            <div class="add-site-actions"><button type="submit">Add Site</button><p id="add-site-status" class="setup-status" aria-live="polite"></p></div>
+      <div id="site-overview-grid" class="site-overview-layout">
+        <section class="panel">
+          <div class="panel-title site-list-panel-header">
+            <div><h2>Configured Sites</h2><p>All sites in this portal.</p></div>
+            <button id="site-add-trigger" class="site-add-button" type="button" aria-label="Add site" data-site-tab="add-site">
+              <svg class="lucide lucide-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              <span>Add Site</span>
+            </button>
           </div>
-        </form>
-      </section>
-      <section id="maps-manager" class="maps-manager hidden" role="dialog" aria-modal="true" aria-labelledby="maps-manager-title">
-        <header class="maps-manager-header">
-          <div><h2 id="maps-manager-title">Site Maps</h2><p>Add Google Maps embeds for this site.</p></div>
-          <button id="maps-back" class="secondary" type="button">Back to Site</button>
-        </header>
-        <div class="maps-manager-layout">
-          <form id="map-form" class="panel map-form">
-            <div class="panel-title"><div><h3>Add map</h3><p>Paste a Google Maps embed URL or iframe snippet.</p></div></div>
-            <div class="map-form-fields">
-              <label>Map name<input name="name" type="text" placeholder="Main entrance" required></label>
-              <label>Google Maps embed<textarea name="embed" rows="5" placeholder="Paste the Google Maps embed link or iframe code" required></textarea></label>
-              <button type="submit">Add Map</button>
-              <p id="map-status" class="setup-status" aria-live="polite"></p>
-            </div>
+          <label class="site-directory-search">Search sites<input id="site-search-input" type="search" placeholder="Search by site name" autocomplete="off"></label>
+          <div id="site-directory-preview" class="site-tree" aria-live="polite"></div>
+        </section>
+        <aside id="site-details-panel" class="panel site-details-panel hidden" aria-labelledby="site-details-title">
+          <header class="panel-title site-details-header"><div><h2 id="site-details-title"></h2><p>Site Information</p></div><div class="site-details-header-actions"><button id="site-edit-trigger" class="site-update-trigger" type="button">Update Site</button><button id="site-details-close-icon" class="dialog-close" type="button" aria-label="Close site information"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div></header>
+          <div class="site-details-panel-body">
+            <div id="site-details-content" class="site-details-content"></div>
+            <section class="site-editor-section" aria-labelledby="site-schedule-title">
+              <div class="site-editor-heading site-schedule-heading"><div><h3 id="site-schedule-title">Scheduler</h3><p>Choose active days and hours in 24-hour time.</p></div><label class="site-monitoring-toggle"><input id="site-monitoring-24-hours" type="checkbox"><span>24-hour monitoring</span></label></div>
+              <p id="site-monitoring-note" class="site-monitoring-note" hidden>Continuous monitoring is active. The weekly schedule is retained.</p>
+              <p id="site-monitoring-status" class="setup-status" aria-live="polite"></p>
+              <form id="site-schedule-form">
+                <div class="site-schedule-head"><span>Day</span><span>Start</span><span>End</span></div>
+                <div id="site-schedule-days" class="site-schedule-days"></div>
+                <div class="site-editor-actions"><button type="submit">Save Schedule</button><p id="site-schedule-status" class="setup-status" aria-live="polite"></p></div>
+              </form>
+            </section>
+            <section class="site-editor-section site-map-section" aria-labelledby="site-map-title">
+              <div class="site-editor-heading"><h3 id="site-map-title">Google Map</h3><p>Embed this site's map below the schedule.</p></div>
+              <form id="site-map-form" class="site-map-form">
+                <label>Map Name<input name="name" type="text" placeholder="Site location"></label>
+                <label id="site-map-embed-field">Google Maps embed URL or iframe<textarea name="embed" rows="3" placeholder="Paste a Google Maps embed URL or iframe"></textarea></label>
+                <div class="site-editor-actions"><button id="site-map-edit-url" class="secondary" type="button" hidden>Edit Embed URL</button><button type="submit">Save Map</button><button id="site-map-remove" class="secondary" type="button" hidden>Remove Map</button><p id="site-map-status" class="setup-status" aria-live="polite"></p></div>
+              </form>
+              <div id="site-map-preview" class="site-map-preview" aria-live="polite"></div>
+            </section>
+          </div>
+        </aside>
+      </div>
+      <div id="site-integration-panel" class="site-overview-layout site-integration-layout hidden">
+        <section class="panel">
+          <div class="panel-title site-list-panel-header"><div><h2>Configured Sites</h2><p>Select a site to configure its integration.</p></div></div>
+          <label class="site-directory-search">Search sites<input id="integration-site-search-input" type="search" placeholder="Search by site name" autocomplete="off"></label>
+          <div id="site-integration-directory" class="site-tree" aria-live="polite"></div>
+        </section>
+        <aside id="site-integration-details" class="panel site-details-panel hidden" aria-labelledby="site-integration-title">
+          <header class="panel-title site-details-header"><div><h2 id="site-integration-title">Select a site</h2><p>Integration Setup</p></div></header>
+          <form id="site-integration-form" class="site-integration-form">
+            <label class="integration-enabled"><input name="enabled" type="checkbox"> Enable integration for this site</label>
+            <label>Webhook URL<input name="webhookUrl" type="url" required></label>
+            <label>Device ID<input name="deviceId" type="text" required></label>
+            <label>Portal Secret<input name="portalSecret" type="password" required autocomplete="new-password"></label>
+            <div class="site-editor-actions"><button type="submit">Save Integration</button><p id="site-integration-status" class="setup-status" aria-live="polite"></p></div>
           </form>
-          <div id="maps-list" class="maps-list" aria-live="polite"></div>
+        </aside>
+      </div>
+      <section id="setup-history-panel" class="setup-history-panel hidden" aria-labelledby="setup-history-title">
+        <div class="panel setup-history-container">
+          <div class="panel-title"><div><h2 id="setup-history-title">Setup History</h2><p>Changes recorded in this portal.</p></div><button id="setup-history-back" class="secondary setup-history-back" type="button"><svg class="lucide lucide-arrow-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg><span>Back to Site</span></button></div>
+          <div id="setup-history-list" class="setup-history-list" aria-live="polite"></div>
         </div>
       </section>
+      <dialog id="add-site-panel" class="add-site-panel" aria-labelledby="add-site-title">
+        <form id="add-site-form" class="panel add-site-form">
+          <div class="panel-title add-site-dialog-header"><div><h2 id="add-site-title">Add Site</h2><p id="add-site-description">Enter site details and client contacts.</p></div><button id="add-site-close" class="dialog-close" type="button" aria-label="Close Add Site"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"></path></svg></button></div>
+          <div class="add-site-fields">
+            <label>Site Name<input name="siteName" type="text" autocomplete="organization" autocapitalize="words" required></label>
+            <label>Site Address<input name="siteAddress" type="text" autocomplete="street-address" autocapitalize="words"></label>
+            <label>Time Zone<select name="timeZone"><option value="EST">EST</option><option value="CST">CST</option><option value="MST">MST</option><option value="PST">PST</option></select></label>
+            <label>Type<select name="siteType"><option>Apartment</option><option>Car Dealership</option><option>Shopping</option><option>Construction</option><option>Other</option></select></label>
+            <fieldset class="add-site-section"><legend>Police Department</legend><label>State<input name="policeState" type="text" autocomplete="address-level1" autocapitalize="words"></label><label>Contact Number<input name="policeContactNumber" type="tel" autocomplete="tel"></label></fieldset>
+            <fieldset class="add-site-section"><legend>Fire Department</legend><label>State<input name="fireState" type="text" autocomplete="address-level1" autocapitalize="words"></label><label>Contact Number<input name="fireContactNumber" type="tel" autocomplete="tel"></label></fieldset>
+            <fieldset class="add-site-section"><legend>Security Information</legend><label>Name<input name="securityName" type="text" autocomplete="name" autocapitalize="words"></label><label>Contact Number<input name="securityContactNumber" type="tel" autocomplete="tel"></label></fieldset>
+            <label class="add-site-notes">Site Notes<textarea name="siteNotes" rows="4"></textarea></label>
+            <section class="client-contacts-section" aria-labelledby="client-contacts-title">
+              <div class="client-contacts-heading"><h3 id="client-contacts-title">Client Contact Information</h3><button id="add-client-contact" class="secondary" type="button">Add Contact</button></div>
+              <div id="client-contacts-list" class="client-contacts-list">
+                <fieldset class="client-contact-card"><legend>Contact 1</legend><label>Full Name<input type="text" data-contact-field="fullName" autocomplete="name" autocapitalize="words" required></label><label>Designation<input type="text" data-contact-field="designation" autocapitalize="words"></label><label>Email Address<input type="email" data-contact-field="email" autocomplete="email"></label><label>Contact Number<input type="tel" data-contact-field="contactNumber" autocomplete="tel"></label><label>Master Password / Entry Access Code<input type="text" data-contact-field="entryAccessCode" autocomplete="off" autocapitalize="off" spellcheck="false"></label><p class="master-password-note">Saved in this browser with the site. Anyone with access to this browser can view it.</p></fieldset>
+              </div>
+            </section>
+            <div class="add-site-actions"><button id="add-site-cancel" class="secondary" type="button">Cancel</button><button id="add-site-submit" type="submit">Add Site</button><p id="add-site-status" class="setup-status" aria-live="polite"></p></div>
+          </div>
+        </form>
+      </dialog>
     </section>
 
     <section id="view-users" class="hidden">
-      <section class="heading"><div><p class="eyebrow">USER MANAGEMENT</p></div></section>
       <section class="panel user-panel">
-        <div class="panel-title"><div><h2>Portal users</h2><p>Manage user accounts and role access levels.</p></div></div>
         <div class="user-management-grid">
           <div class="user-list-panel">
             <div class="panel-title"><div><h3>User accounts</h3><p>View platform users and their roles.</p></div></div>
             <div id="users-list" class="users-list"></div>
           </div>
           <div class="user-actions-panel">
-            <div class="panel-title"><div><h3 id="user-form-heading">Add user</h3><p>Only Superadmin can create or remove users.</p></div></div>
+            <div class="panel-title"><div><h3 id="user-form-heading">Add user</h3><p>Access conditions apply independently of role.</p></div></div>
             <form id="user-form" class="user-form">
               <label>Username<input name="username" type="text" placeholder="new user" required></label>
+              <label>Full Name<input name="fullName" type="text" placeholder="Jane Smith" autocomplete="name" maxlength="80" required></label>
               <label>Password<input name="password" type="password" placeholder="temporary password"></label>
               <label>Role<select name="role" required>
                 <option value="Superadmin">Superadmin</option>
                 <option value="Admin">Admin</option>
                 <option value="Operator">Operator</option>
               </select></label>
+              <fieldset class="user-conditions">
+                <legend>Conditions</legend>
+                <label><input name="viewLive" type="checkbox" checked> View live</label>
+                <label><input name="addUser" type="checkbox"> Add User</label>
+                <label><input name="viewLogs" type="checkbox"> View logs</label>
+              </fieldset>
               <div class="user-form-actions">
                 <button type="submit">Add User</button>
                 <button type="button" id="user-form-cancel" class="secondary hidden">Cancel</button>
@@ -141,7 +222,58 @@
         </div>
       </section>
     </section>
+    <section id="view-logs" class="hidden">
+      <section class="panel setup-history-container">
+        <div class="panel-title"><div><h2>User Logs</h2><p>Configuration changes and break activity.</p></div></div>
+        <div class="history-tabs" role="tablist" aria-label="User log categories">
+          <button id="system-update-tab" type="button" role="tab" aria-selected="true" aria-controls="user-logs-list" data-user-log-view="system-update">System Update</button>
+          <button id="break-logs-tab" type="button" role="tab" aria-selected="false" aria-controls="user-logs-list" data-user-log-view="break-logs">Break Logs</button>
+        </div>
+        <div id="user-logs-list" class="setup-history-list" role="tabpanel" aria-labelledby="system-update-tab" aria-live="polite"></div>
+      </section>
+    </section>
   </main>
-  <script src="/app.js?v=9"></script>
+  <dialog id="alarm-ack-dialog" class="alarm-confirm-dialog" aria-labelledby="alarm-ack-title" aria-describedby="alarm-ack-message">
+    <div class="alarm-confirm-content">
+      <button id="alarm-ack-close" class="alarm-confirm-close" type="button" aria-label="Close dialog" title="Close dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+      <h2 id="alarm-ack-title">Acknowledge this alarm?</h2>
+      <p id="alarm-ack-message">This will mark the alarm as reviewed.</p>
+      <p id="alarm-ack-error" class="alarm-dismiss-error" role="alert"></p>
+      <div class="alarm-confirm-actions"><button id="alarm-ack-cancel" class="secondary" type="button">Cancel</button><button id="alarm-ack-confirm" type="button">Yes, acknowledge</button></div>
+    </div>
+  </dialog>
+  <dialog id="alarm-dismiss-dialog" class="alarm-confirm-dialog" aria-labelledby="alarm-dismiss-title" aria-describedby="alarm-dismiss-message">
+    <div class="alarm-confirm-content">
+      <button id="alarm-dismiss-close" class="alarm-confirm-close" type="button" aria-label="Close dialog" title="Close dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+      <h2 id="alarm-dismiss-title">Close this alarm?</h2>
+      <p id="alarm-dismiss-message">The alarm will be removed from Live Alarms.</p>
+      <p id="alarm-dismiss-error" class="alarm-dismiss-error" role="alert"></p>
+      <div class="alarm-confirm-actions"><button id="alarm-dismiss-cancel" class="secondary" type="button">Cancel</button><button id="alarm-dismiss-confirm" type="button">Yes, close alarm</button></div>
+    </div>
+  </dialog>
+  <dialog id="alarm-snooze-dialog" class="alarm-confirm-dialog" aria-labelledby="alarm-snooze-title" aria-describedby="alarm-snooze-message">
+    <div class="alarm-confirm-content">
+      <button id="alarm-snooze-close" class="alarm-confirm-close" type="button" aria-label="Close dialog" title="Close dialog"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg></button>
+      <h2 id="alarm-snooze-title">Snooze alarm</h2>
+      <p id="alarm-snooze-message">Choose how long to hide this alarm from the live grid.</p>
+      <div class="alarm-snooze-field"><span>Duration</span>
+        <details id="alarm-snooze-picker" class="alarm-snooze-select">
+          <summary><span id="alarm-snooze-duration-label">5 minutes</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+          </summary>
+          <div class="alarm-snooze-options" role="group" aria-label="Snooze duration">
+            <button type="button" data-snooze-duration="1" aria-pressed="false">1 minute</button>
+            <button type="button" data-snooze-duration="2" aria-pressed="false">2 minutes</button>
+            <button type="button" data-snooze-duration="3" aria-pressed="false">3 minutes</button>
+            <button type="button" data-snooze-duration="4" aria-pressed="false">4 minutes</button>
+            <button type="button" data-snooze-duration="5" aria-pressed="true">5 minutes</button>
+          </div>
+        </details>
+      </div>
+      <p id="alarm-snooze-error" class="alarm-dismiss-error" role="alert"></p>
+      <div class="alarm-confirm-actions"><button id="alarm-snooze-cancel" class="secondary" type="button">Cancel</button><button id="alarm-snooze-confirm" type="button">Snooze</button></div>
+    </div>
+  </dialog>
+  <script src="/app.js?v=11"></script>
 </body>
 </html>

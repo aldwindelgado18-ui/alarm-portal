@@ -1,0 +1,9 @@
+{
+  "operator": {
+    "username": "operator",
+    "active": false,
+    "startedAt": "2026-10-13T23:59:01.541Z",
+    "startedBy": "operator",
+    "endedAt": "2026-10-13T23:59:13.092Z"
+  }
+}

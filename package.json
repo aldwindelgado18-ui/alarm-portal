@@ -10,6 +10,6 @@
     "test:webhook": "node test-webhook.js"
   },
   "dependencies": {
-    "smtp-server": "^3.13.6"
+    "smtp-server": "^3.21.4"
   }
 }
